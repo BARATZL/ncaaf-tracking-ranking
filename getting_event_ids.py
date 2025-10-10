@@ -9,7 +9,7 @@ SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college
 #The below should source the information we want properly.
 
 def get_event_ids(yyyymmdd:str):
-    new_url = f"{SCOREBOARD_URL}?dates={yyyymmdd}"
+    url = f"{SCOREBOARD_URL}?dates={yyyymmdd}"
     reponse = requests.get(url)
     if response.ok:
         data = response.json()
