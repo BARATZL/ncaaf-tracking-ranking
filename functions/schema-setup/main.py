@@ -56,7 +56,6 @@ def task(request):
         id INT
         ,fullname VARCHAR
         ,city VARCHAR
-        ,state VARCHAR
         ,country VARCHAR
         ,indoor BOOLEAN
         ,ingest_timestamp TIMESTAMP
@@ -76,7 +75,6 @@ def task(request):
         ,season INT
         ,week INT
         ,venue_id INT
-        ,attendance INT
         ,ingest_timestamp TIMESTAMP
         ,source_path VARCHAR
         ,run_id VARCHAR
