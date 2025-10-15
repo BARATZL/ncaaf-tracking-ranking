@@ -54,7 +54,7 @@ import requests
 import pandas as pd
 from datetime import datetime
 
-# === 1️⃣ 取得 ESPN API 資料 ===
+
 url = "http://site.api.espn.com/apis/site/v2/sports/football/college-football/rankings"
 response = requests.get(url)
 data = response.json()
@@ -62,7 +62,7 @@ data = response.json()
 latest_season = data.get("latestSeason", {})
 latest_week = data.get("latestWeek", {})
 
-# === 2️⃣ 設定要擷取的榜單 ===
+
 polls_to_extract = {
     "AP": "AP Top 25",
     "Coaches": "Coaches"
@@ -70,10 +70,10 @@ polls_to_extract = {
 
 poll_dfs = {}
 
-# === 3️⃣ 迴圈擷取榜單 ===
+
 for key, name in polls_to_extract.items():
     poll_data = next((r for r in data["rankings"] if name.lower() in r["name"].lower()), None)
-
+    
     if poll_data:
         teams = []
         for t in poll_data["ranks"]:
@@ -87,7 +87,13 @@ for key, name in polls_to_extract.items():
                 "poll_name": poll_data["shortName"],
                 "poll_date": poll_date,
                 "rank": t["current"],
+
+                # ✅ 加入 team id
+                "team_id": t["team"].get("id", None),
+
+                # ✅ 原本的 team name 邏輯
                 "team": t["team"].get("displayName", t["team"].get("location", t["team"].get("name"))),
+
                 "record": t.get("recordSummary", ""),
                 "points": t.get("points", ""),
                 "firstPlaceVotes": t.get("firstPlaceVotes", 0)
@@ -95,11 +101,11 @@ for key, name in polls_to_extract.items():
 
         df = pd.DataFrame(teams)
         poll_dfs[key] = df
-        print(f"✅ {key} poll 加入可讀時間欄位完成，共 {len(df)} 支球隊")
+        print(f"✅ {key} poll 加入 team_id 與時間欄位完成，共 {len(df)} 支球隊")
     else:
         print(f"⚠️ can't find {name} ranking data")
 
 
 for k, df in poll_dfs.items():
-    print(f"\n🏈 {k} Poll Top 10：")
-    print(df.head())
+    print(f"\n🏈 {k} Poll 前 10 名：")
+    print(df.head(10))
