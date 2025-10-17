@@ -7,7 +7,7 @@ import duckdb
 
 # settings
 project_id = 'baratz00-ba882-fall25'
-secret_id = 'MotherDuck'   #<---------- this is the name of the secret you created
+secret_id = 'MotherDuck' 
 version_id = 'latest'
 
 # db setup
@@ -112,6 +112,15 @@ def task(request):
         ,team_id INT
         ,home_away VARCHAR
         ,score INT
+        ,total_yards INT
+        ,third_eff FLOAT
+        ,fourth_eff FLOAT
+        ,yards_per_pass FLOAT
+        ,yards_per_rush FLOAT
+        ,turnovers INT
+        ,fumbles_lost INT
+        ,ints_thrown INT
+        ,top INT
         ,ingest_timestamp TIMESTAMP
         ,source_path VARCHAR
         ,run_id VARCHAR
@@ -120,6 +129,26 @@ def task(request):
     print(f"{raw_tbl_sql}")
     md.sql(raw_tbl_sql)  
 
+    raw_tbl_name = f"{db_schema}.rankings"
+    raw_tbl_sql = f"""
+    CREATE TABLE IF NOT EXISTS {raw_tbl_name} (
+        season_year INT 
+        ,week_number INT
+        ,poll_name VARCHAR
+        ,poll_date VARCHAR
+        ,team_id INT
+        ,team VARCHAR
+        ,current_rank INT
+        ,previous_rank INT
+        ,record VARCHAR
+        ,points INT
+        ,firstPlaceVotes INT
+        ,source_path VARCHAR
+        ,run_id VARCHAR
+    );
+    """
+    print(f"{raw_tbl_sql}")
+    md.sql(raw_tbl_sql)  
 
     # return a dictionary/json entry, its blank because are not returning data, 200 for success
     return {}, 200
