@@ -1,15 +1,59 @@
+import functions_framework
+import json
+import uuid
+from datetime import datetime
+
+# 匯入你的自定義模組
 from functions.fetch_rankings import fetch_rankings_from_espn
 from functions.parse_rankings import parse_rankings_data
 from functions.export_rankings import export_rankings_to_file
 
-def main():
-    print("Starting ESPN Ranking Pipeline")
-    
-    data = fetch_rankings_from_espn()
-    poll_dfs = parse_rankings_data(data)
-    export_rankings_to_file(poll_dfs)
 
-    print("Pipeline finished successfully!")
+@functions_framework.http
+def task(request):
+    """
+    Cloud Function entry point.
+    Fetches, parses, and exports ESPN ranking data automatically.
+    """
+    print("🚀 Starting ESPN Ranking Pipeline")
 
-if __name__ == "__main__":
-    main()
+    # --- 1️⃣ 產生唯一 run ID ---
+    run_id = request.args.get("run_id") or uuid.uuid4().hex[:12]
+    print(f"Run ID: {run_id}")
+
+    # --- 2️⃣ 抓取資料 ---
+    try:
+        data = fetch_rankings_from_espn()
+        print("✅ Successfully fetched data from ESPN API")
+    except Exception as e:
+        print(f"❌ Error fetching data: {e}")
+        return (json.dumps({"status": "failed", "error": str(e)}), 500)
+
+    # --- 3️⃣ 處理資料 ---
+    try:
+        poll_dfs = parse_rankings_data(data)
+        print("✅ Rankings parsed successfully")
+    except Exception as e:
+        print(f"❌ Error parsing data: {e}")
+        return (json.dumps({"status": "failed", "error": str(e)}), 500)
+
+    # --- 4️⃣ 匯出到 GCS 或本地 ---
+    try:
+        export_rankings_to_file(poll_dfs)
+        print("✅ Rankings exported successfully")
+    except Exception as e:
+        print(f"❌ Error exporting data: {e}")
+        return (json.dumps({"status": "failed", "error": str(e)}), 500)
+
+    # --- 5️⃣ 成功回傳 ---
+    timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    return (
+        json.dumps({
+            "status": "success",
+            "run_id": run_id,
+            "timestamp": timestamp,
+            "polls_processed": list(poll_dfs.keys())
+        }),
+        200,
+        {"Content-Type": "application/json"}
+    )
