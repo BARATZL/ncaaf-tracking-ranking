@@ -74,4 +74,4 @@ def task(request):
         "run_id": run_id,
         "bucket_name": gcs_path.get('bucket_name')
         "blob_name": gcs_path.get('blob_name')
-    }, 200
+    }, 200  # This return statement only shows the results of the function. The important piece is above, where the data is uploaded to the gcs bucket.
