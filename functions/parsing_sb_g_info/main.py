@@ -130,7 +130,7 @@ def task(request):
     game_teams_stats.append({
         'event_id':game_id,
         'team':data['boxscore']['teams'][0]['team']['id'],  # Can be adjusted if id is not sufficient for joins.
-        'home_away':'Away'
+        'home_away':'Away',
         #now for stats
         'total_yards':int(data['boxscore']['teams'][0]['statistics'][3]['displayValue']),
         'third_eff':float(data['boxscore']['teams'][0]['statistics'][1]['value']),
@@ -148,9 +148,9 @@ def task(request):
 
     # repeating for second team.
      game_teams_stats.append({
-        'event_id':e 
+        'event_id':game_id, 
         'team':data['boxscore']['teams'][1]['team']['id'],  # Can be adjusted if id is not sufficient for joins.
-        'home_away':'Home'   # hard coding the second team to be home team, following T1 @ T2 format of most sports promotions.
+        'home_away':'Home',   # hard coding the second team to be home team, following T1 @ T2 format of most sports promotions.
         'total_yards':int(data['boxscore']['teams'][1]['statistics'][3]['displayValue']),
         'third_eff':float(data['boxscore']['teams'][1]['statistics'][1]['value']),
         'fourth_eff':float(data['boxscore']['teams'][1]['statistics'][2]['value']),
