@@ -144,8 +144,6 @@ def task(request):
         ,points INT
         ,firstPlaceVotes INT
         ,ingest_timestamp TIMESTAMP
-        ,source_path VARCHAR
-        ,run_id VARCHAR
     );
     """
     print(f"{raw_tbl_sql}")
