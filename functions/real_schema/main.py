@@ -118,6 +118,7 @@ def task(request):
         ,record VARCHAR
         ,points INT
         ,firstPlaceVotes INT
+        ,ingest_timestamp TIMESTAMP
         ,source_path VARCHAR
         ,run_id VARCHAR
     );
