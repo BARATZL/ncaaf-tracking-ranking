@@ -11,6 +11,9 @@ def parse_rankings_data(data):
         "Coaches": "Coaches"
     }
 
+    ingest_ts_str = pd.Timestamp.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+    
     poll_dfs = {}
 
     for key, name in polls_to_extract.items():
@@ -32,7 +35,8 @@ def parse_rankings_data(data):
                     "previous_rank": t.get("previous", None),
                     "record": t.get("recordSummary", ""),
                     "points": t.get("points", ""),
-                    "firstPlaceVotes": t.get("firstPlaceVotes", 0)
+                    "firstPlaceVotes": t.get("firstPlaceVotes", 0),
+                    "ingest_timestamp": ingest_ts_str
                 })
             
             df = pd.DataFrame(teams)
