@@ -2,12 +2,15 @@ import functions_framework
 import json
 import uuid
 from datetime import datetime
-
+import duckdb
 # 匯入你的自定義模組
 from functions.fetch_rankings import fetch_rankings_from_espn
 from functions.parse_rankings import parse_rankings_data
 from functions.export_rankings import export_rankings_to_file
 
+db = 'ncaa'
+schema = 'raw'
+db_schema = f'{db}.{schema}'
 
 @functions_framework.http
 def task(request):
@@ -45,6 +48,12 @@ def task(request):
         print(f"❌ Error exporting data: {e}")
         return (json.dumps({"status": "failed", "error": str(e)}), 500)
 
+    # --- 4️⃣.5️⃣ 上傳MD ---
+    
+    print(f"appending rows to raw/rankings")
+    tbl = db_schema + ".rankings"
+    md.execute(f"INSERT INTO {tbl} SELECT * FROM polls_df")
+    
     # --- 5️⃣ 成功回傳 ---
     timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     return (
