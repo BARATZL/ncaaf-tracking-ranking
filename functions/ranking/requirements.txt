@@ -1,0 +1,5 @@
+functions-framework==3.*
+requests
+pandas==2.3.2
+google-cloud-storage
+pyarrow==21.0.0
