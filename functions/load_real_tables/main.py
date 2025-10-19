@@ -106,7 +106,7 @@ def task(request):
         SELECT
         gt.*,
         ROW_NUMBER() OVER (
-            PARTITION BY id
+            PARTITION BY game_id
             ORDER BY ingest_timestamp DESC NULLS LAST
         ) AS rn
         FROM ncaa.raw.game_team AS gt
@@ -126,12 +126,12 @@ def task(request):
     SELECT
         season_year, week_number, poll_name, poll_date, team_id,
         team, current_rank, previous_rank, record, points, firstPlaceVotes,
-        ingest_timestamp, source_path, run_id
+        ingest_timestamp
     FROM (
         SELECT
         ra.*,
         ROW_NUMBER() OVER (
-            PARTITION BY id
+            PARTITION BY poll_name
             ORDER BY ingest_timestamp DESC NULLS LAST
         ) AS rn
         FROM ncaa.raw.rankings AS ra
