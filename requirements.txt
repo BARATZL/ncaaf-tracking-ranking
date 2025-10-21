@@ -1,5 +1,0 @@
-functions-framework
-requests
-pandas
-google-cloud-storage
-pyarrow
