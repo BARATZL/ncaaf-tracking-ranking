@@ -2,7 +2,7 @@ import functions_framework
 from google.cloud import secretmanager
 import duckdb
 
-project_id = 'baratz00-ba882-fall25
+project_id = 'baratz00-ba882-fall25'
 secret_id = 'MotherDuck'
 version_id = 'latest'
 
@@ -35,6 +35,7 @@ def task(request):
         ,ingest_timestamp TIMESTAMP
         ,source_path VARCHAR
         ,run_id VARCHAR
+        ,PRIMARY KEY (id)
     );
     """
     print(f"{raw_tbl_sql}")
@@ -52,6 +53,7 @@ def task(request):
         ,ingest_timestamp TIMESTAMP
         ,source_path VARCHAR
         ,run_id VARCHAR
+        ,PRIMARY KEY (id)
     );
     """
     print(f"{raw_tbl_sql}")
@@ -73,6 +75,7 @@ def task(request):
         ,ingest_timestamp TIMESTAMP
         ,source_path VARCHAR
         ,run_id VARCHAR
+        ,PRIMARY KEY (id)
     );
     """
     print(f"{raw_tbl_sql}")
@@ -98,6 +101,7 @@ def task(request):
         ,ingest_timestamp TIMESTAMP
         ,source_path VARCHAR
         ,run_id VARCHAR
+        ,PRIMARY KEY (game_id, team_id)
     );
     """
     print(f"{raw_tbl_sql}")
@@ -119,6 +123,7 @@ def task(request):
         ,points INT
         ,firstPlaceVotes INT
         ,ingest_timestamp TIMESTAMP
+        ,PRIMARY KEY (poll_name, poll_date, team_id)
     );
     """
     print(f"{raw_tbl_sql}")
