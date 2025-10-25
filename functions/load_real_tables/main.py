@@ -2,7 +2,7 @@ import functions_framework
 from google.cloud import secretmanager
 import duckdb
 
-project_id = 'baratz00-ba882-fall25
+project_id = 'baratz00-ba882-fall25'
 secret_id = 'MotherDuck'
 version_id = 'latest'
 
@@ -74,7 +74,7 @@ def task(request):
     raw_tbl_sql = """
     WITH latest AS (
     SELECT
-        id, start_date, season, week, venue_id, attendance,
+        id, start_date, season, week, venue_id,
         ingest_timestamp, source_path, run_id
     FROM (
         SELECT
