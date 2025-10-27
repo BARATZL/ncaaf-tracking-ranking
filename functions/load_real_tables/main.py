@@ -95,7 +95,7 @@ def task(request):
     md.execute(raw_tbl_sql)
 
     # game_team_stats
-    """
+    raw_tbl_sql = """
     WITH latest AS (
     SELECT
         game_id, team_id, home_away, score, total_yards,
@@ -121,7 +121,7 @@ def task(request):
     md.execute(raw_tbl_sql)
 
     # rankings
-    """
+    raw_tbl_sql = """
     WITH latest AS (
     SELECT
         season_year, week_number, poll_name, poll_date, team_id,
@@ -131,7 +131,7 @@ def task(request):
         SELECT
         ra.*,
         ROW_NUMBER() OVER (
-            PARTITION BY poll_name
+            PARTITION BY poll_name, poll_date, team_id
             ORDER BY ingest_timestamp DESC NULLS LAST
         ) AS rn
         FROM ncaa.raw.rankings AS ra
@@ -142,6 +142,10 @@ def task(request):
     SELECT *
     FROM latest;
     """
+    print(f"{raw_tbl_sql}")
+    md.execute(raw_tbl_sql)
+
+    return {}, 200
     print(f"{raw_tbl_sql}")
     md.execute(raw_tbl_sql)
 
