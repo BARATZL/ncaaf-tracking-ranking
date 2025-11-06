@@ -51,8 +51,9 @@ def task(request):
     latest_week = data.get("latestWeek", {})
 
     polls_to_extract = {
-        "AP": "AP Top 25",
-        "Coaches": "Coaches"
+    "AP": "AP Top 25",
+    "Coaches": "Coaches",
+    "CFP": "Playoff" 
     }
 
     ingest_ts_str = pd.Timestamp.utcnow().strftime("%Y-%m-%d %H:%M:%S")
