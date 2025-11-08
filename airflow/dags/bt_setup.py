@@ -19,7 +19,7 @@ def bt_setup_and_agg():
 
     @task
     def setup_schema():
-        s = utils.read_sql(SQL_DIR / "bt-schema.sql")
+        s = utils.read_sql(SQL_DIR / "bt_schema.sql")
         utils.run_execute(s)
 
     @task
