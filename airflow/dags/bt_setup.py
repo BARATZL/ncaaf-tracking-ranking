@@ -30,5 +30,3 @@ def bt_setup_and_agg():
     setup_schema() >> run_the_deal()
 
 bt_setup_and_agg()
-
-bt_setup_and_agg()
