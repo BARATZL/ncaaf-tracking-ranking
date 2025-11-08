@@ -146,7 +146,3 @@ def task(request):
     md.execute(raw_tbl_sql)
 
     return {}, 200
-    print(f"{raw_tbl_sql}")
-    md.execute(raw_tbl_sql)
-
-    return {}, 200
