@@ -7,7 +7,7 @@ from ncaaf import utils
 
 # paths, as the airflow project is a project we deploy to astronomer
 BASE_DIR = Path(os.environ.get("AIRFLOW_HOME", "/usr/local/airflow"))
-SQL_DIR = BASE_DIR / "include" / "sql"
+SQL_DIR = BASE_DIR / "include"
 
 @dag(
     schedule=None,
@@ -22,10 +22,12 @@ def bt_setup_and_agg():
         s = utils.read_sql(SQL_DIR / "bt-schema.sql")
         utils.run_execute(s)
     def run_the_deal():
-        s = utils.read_sql(SQL_DIR / "bt_update.sql")
+        s = utils.read_sql(SQL_DIR / "update_bt.sql")
         utils.run_execute(s)
 
     setup_schema()
     run_the_deal()
+
+bt_setup_and_agg()
 
 bt_setup_and_agg()
