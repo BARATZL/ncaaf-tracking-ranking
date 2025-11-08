@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS bt.team_stats (
 -- Table 2: Pairwise game comparisons for Bradley-Terry model input
 -- Each row represents one game with both teams' performance
 CREATE TABLE IF NOT EXISTS bt.pairwise_comparisons (
-    comparison_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+   -- comparison_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     game_id INTEGER NOT NULL,
     team_a_id INTEGER NOT NULL,
     team_b_id INTEGER NOT NULL,
@@ -119,7 +119,8 @@ CREATE TABLE IF NOT EXISTS bt.pairwise_comparisons (
     
     -- Constraints
     UNIQUE(game_id, team_a_id, team_b_id),
-    CHECK (team_a_id < team_b_id),  -- Ensure each game appears once
+    CHECK (team_a_id < team_b_id),
+    PRIMARY KEY(game_id, team_a_id, team_b_id)  -- Ensure each game appears once
   --  FOREIGN KEY (game_id) REFERENCES real_deal.dim_games(game_id),
   -- FOREIGN KEY (team_a_id) REFERENCES real_deal.dim_teams(team_id),
   --  FOREIGN KEY (team_b_id) REFERENCES real_deal.dim_teams(team_id)
@@ -128,7 +129,7 @@ CREATE TABLE IF NOT EXISTS bt.pairwise_comparisons (
 -- Table 3: Bradley-Terry model rankings output
 -- Stores the results of each model run
 CREATE TABLE IF NOT EXISTS bt.rankings (
-    ranking_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    -- ranking_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     team_id INTEGER NOT NULL,
     
     -- Ranking information
@@ -157,7 +158,7 @@ CREATE TABLE IF NOT EXISTS bt.rankings (
     
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    
+    PRIMARY KEY(team_id, model_run_timestamp)
     -- Constraints
   --  FOREIGN KEY (team_id) REFERENCES real_deal.dim_teams(team_id),
   --  UNIQUE(team_id, model_run_timestamp, model_version)
@@ -166,8 +167,8 @@ CREATE TABLE IF NOT EXISTS bt.rankings (
 -- Table 4: Model run metadata and diagnostics
 -- Tracks each model execution with performance metrics
 CREATE TABLE IF NOT EXISTS bt.model_runs (
-    run_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    run_timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- run_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    run_timestamp TIMESTAMP NOT NULL DEFAULT PRIMARY KEY,
     
     -- Model configuration
     model_version VARCHAR(50) NOT NULL,
@@ -207,12 +208,12 @@ CREATE TABLE IF NOT EXISTS bt.model_runs (
     notes TEXT,
     
     UNIQUE(run_timestamp, model_version)
-);
+    );
 
 -- Table 5: Head-to-head matchup predictions
 -- Store predicted probabilities for any team matchup
 CREATE TABLE IF NOT EXISTS bt.matchup_predictions (
-    prediction_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+ --   prediction_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     model_run_id INTEGER NOT NULL,
     
     -- Teams involved
@@ -245,13 +246,13 @@ CREATE TABLE IF NOT EXISTS bt.matchup_predictions (
     --FOREIGN KEY (home_team_id) REFERENCES real_deal.dim_teams(team_id),
     --FOREIGN KEY (actual_game_id) REFERENCES real_deal.dim_games(game_id),
     --FOREIGN KEY (actual_winner_id) REFERENCES real_deal.dim_teams(team_id),
-    UNIQUE(model_run_id, team_a_id, team_b_id)
+    PRIMARY KEY(model_run_id, team_a_id, team_b_id)
 );
 
 -- Table 6: Ranking history for trend analysis
 -- Denormalized table optimized for time-series queries
 CREATE TABLE IF NOT EXISTS bt.ranking_history (
-    history_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+  --  history_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     team_id INTEGER NOT NULL,
     model_run_timestamp TIMESTAMP NOT NULL,
     
@@ -278,13 +279,13 @@ CREATE TABLE IF NOT EXISTS bt.ranking_history (
     --FOREIGN KEY (team_id) REFERENCES real_deal.dim_teams(team_id),
     --FOREIGN KEY (ranking_id) REFERENCES bt.rankings(ranking_id),
     
-    UNIQUE(team_id, model_run_timestamp)
+    PRIMARY KEY(team_id, model_run_timestamp)
 );
 
 -- Table 7: Benchmark team statistics
 -- Track the "average team" benchmark over time
 CREATE TABLE IF NOT EXISTS bt.benchmark_stats (
-    benchmark_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    -- benchmark_id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     model_run_timestamp TIMESTAMP NOT NULL,
     
     -- Benchmark strength (typically 0 after centering)
