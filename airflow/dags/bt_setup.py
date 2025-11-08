@@ -15,13 +15,17 @@ SQL_DIR = BASE_DIR / "include" / "sql"
     catchup=False,
     tags=["bt", "setup"]
 )
-def bt_setup():
+def bt_setup_and_agg():
 
     @task
     def setup_schema():
         s = utils.read_sql(SQL_DIR / "bt-schema.sql")
         utils.run_execute(s)
-    
-    setup_schema()
+    def run_the_deal():
+        s = utils.read_sql(SQL_DIR / "bt_update.sql")
+        utils.run_execute(s)
 
-bt_setup()
+    setup_schema()
+    run_the_deal()
+
+bt_setup_and_agg()
