@@ -153,8 +153,8 @@ CREATE TABLE IF NOT EXISTS bt.rankings (
     model_type VARCHAR(50) DEFAULT 'standard',  -- 'standard', 'with_covariates', 'time_weighted'
     
     -- Model parameters used
-    home_field_advantage_param FLOAT,
-    covariate_weights JSONB,  -- Store any covariate coefficients as JSON
+    --home_field_advantage_param FLOAT,
+    --covariate_weights JSON,  -- Store any covariate coefficients as JSON
     
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
