@@ -21,12 +21,13 @@ def bt_setup_and_agg():
     def setup_schema():
         s = utils.read_sql(SQL_DIR / "bt-schema.sql")
         utils.run_execute(s)
+
+    @task
     def run_the_deal():
         s = utils.read_sql(SQL_DIR / "update_bt.sql")
         utils.run_execute(s)
 
-    setup_schema()
-    run_the_deal()
+    setup_schema() >> run_the_deal()
 
 bt_setup_and_agg()
 

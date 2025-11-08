@@ -20,6 +20,7 @@ def build_ncaa_real_pipeline_tasks():
         url = "https://us-central1-baratz00-ba882-fall25.cloudfunctions.net/ranking"
         return invoke_function(url)
     
+    @task
     def real_schema():
         """create real_deal schema"""
         url = "https://us-central1-baratz00-ba882-fall25.cloudfunctions.net/real_schema"
