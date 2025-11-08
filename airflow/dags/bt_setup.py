@@ -7,10 +7,10 @@ from ncaaf import utils
 
 # paths, as the airflow project is a project we deploy to astronomer
 BASE_DIR = Path(os.environ.get("AIRFLOW_HOME", "/usr/local/airflow"))
-SQL_DIR = BASE_DIR / "include"
+SQL_DIR = BASE_DIR / "include" / "sql"
 
 @dag(
-    schedule=None,
+    schedule="30 9 * * 2",
     start_date=datetime(2025, 11, 6),
     catchup=False,
     tags=["bt", "setup"]
