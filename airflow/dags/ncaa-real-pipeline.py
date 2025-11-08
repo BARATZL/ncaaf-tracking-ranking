@@ -15,6 +15,11 @@ def invoke_function(url, params=None) -> dict:
 def build_ncaa_real_pipeline_tasks():
 
     @task
+    def ranking_recheck():
+        """taking cfp inputs which pop up on tuesday"""
+        url = "https://us-central1-baratz00-ba882-fall25.cloudfunctions.net/ranking"
+        return invoke_function(url)
+    
     def real_schema():
         """create real_deal schema"""
         url = "https://us-central1-baratz00-ba882-fall25.cloudfunctions.net/real_schema"
@@ -29,6 +34,7 @@ def build_ncaa_real_pipeline_tasks():
         payload["date"] = ctx["ds_nodash"]
         return invoke_function(url, params=payload)
 
+    ranking_recheck()
     s = real_schema()
     l = load_real_table(s)
     return l
@@ -37,9 +43,9 @@ def build_ncaa_real_pipeline_tasks():
 LOCAL_TZ = pendulum.timezone("America/New_York")
 START = datetime(2024, 1, 1)  # NCAA starting week
 
-# ---------- DAG #1：Sun 8:30 PM ----------
+# ---------- DAG #1：Tuesday 8:30 PM ----------
 @dag(
-    schedule="30 20 * * 0",   # Sun 8:30 p.m.
+    schedule="30 20 * * 2",   # Sun 8:30 p.m.
     start_date=START,
     catchup=False,             #  backfill
     max_active_runs=1,
