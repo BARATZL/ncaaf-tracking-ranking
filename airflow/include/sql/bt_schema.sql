@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS bt.team_stats (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     -- Foreign key to source data
-    FOREIGN KEY (team_id) REFERENCES real_deal.dim_teams(team_id)
+  --  FOREIGN KEY (team_id) REFERENCES real_deal.dim_teams(team_id)
 );
 
 -- Table 2: Pairwise game comparisons for Bradley-Terry model input
@@ -120,9 +120,9 @@ CREATE TABLE IF NOT EXISTS bt.pairwise_comparisons (
     -- Constraints
     UNIQUE(game_id, team_a_id, team_b_id),
     CHECK (team_a_id < team_b_id),  -- Ensure each game appears once
-    FOREIGN KEY (game_id) REFERENCES real_deal.dim_games(game_id),
-    FOREIGN KEY (team_a_id) REFERENCES real_deal.dim_teams(team_id),
-    FOREIGN KEY (team_b_id) REFERENCES real_deal.dim_teams(team_id)
+  --  FOREIGN KEY (game_id) REFERENCES real_deal.dim_games(game_id),
+  -- FOREIGN KEY (team_a_id) REFERENCES real_deal.dim_teams(team_id),
+  --  FOREIGN KEY (team_b_id) REFERENCES real_deal.dim_teams(team_id)
 );
 
 -- Table 3: Bradley-Terry model rankings output
@@ -159,8 +159,8 @@ CREATE TABLE IF NOT EXISTS bt.rankings (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
     -- Constraints
-    FOREIGN KEY (team_id) REFERENCES real_deal.dim_teams(team_id),
-    UNIQUE(team_id, model_run_timestamp, model_version)
+  --  FOREIGN KEY (team_id) REFERENCES real_deal.dim_teams(team_id),
+  --  UNIQUE(team_id, model_run_timestamp, model_version)
 );
 
 -- Table 4: Model run metadata and diagnostics
@@ -239,12 +239,12 @@ CREATE TABLE IF NOT EXISTS bt.matchup_predictions (
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     
-    FOREIGN KEY (model_run_id) REFERENCES bt.model_runs(run_id),
-    FOREIGN KEY (team_a_id) REFERENCES real_deal.dim_teams(team_id),
-    FOREIGN KEY (team_b_id) REFERENCES real_deal.dim_teams(team_id),
-    FOREIGN KEY (home_team_id) REFERENCES real_deal.dim_teams(team_id),
-    FOREIGN KEY (actual_game_id) REFERENCES real_deal.dim_games(game_id),
-    FOREIGN KEY (actual_winner_id) REFERENCES real_deal.dim_teams(team_id),
+    --FOREIGN KEY (model_run_id) REFERENCES bt.model_runs(run_id),
+    --FOREIGN KEY (team_a_id) REFERENCES real_deal.dim_teams(team_id),
+    --FOREIGN KEY (team_b_id) REFERENCES real_deal.dim_teams(team_id),
+    --FOREIGN KEY (home_team_id) REFERENCES real_deal.dim_teams(team_id),
+    --FOREIGN KEY (actual_game_id) REFERENCES real_deal.dim_games(game_id),
+    --FOREIGN KEY (actual_winner_id) REFERENCES real_deal.dim_teams(team_id),
     UNIQUE(model_run_id, team_a_id, team_b_id)
 );
 
@@ -275,8 +275,8 @@ CREATE TABLE IF NOT EXISTS bt.ranking_history (
     week_number INTEGER,
     season_year INTEGER,
     
-    FOREIGN KEY (team_id) REFERENCES real_deal.dim_teams(team_id),
-    FOREIGN KEY (ranking_id) REFERENCES bt.rankings(ranking_id),
+    --FOREIGN KEY (team_id) REFERENCES real_deal.dim_teams(team_id),
+    --FOREIGN KEY (ranking_id) REFERENCES bt.rankings(ranking_id),
     
     UNIQUE(team_id, model_run_timestamp)
 );
