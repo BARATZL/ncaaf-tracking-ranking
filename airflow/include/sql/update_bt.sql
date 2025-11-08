@@ -25,13 +25,13 @@ WITH team_offensive_stats AS (
         SUM(total_yards) as total_yards_gained,
         
         -- Win-loss record
-        SUM(CASE WHEN score > opp.score THEN 1 ELSE 0 END) as wins,
-        SUM(CASE WHEN score < opp.score THEN 1 ELSE 0 END) as losses,
-        SUM(CASE WHEN score = opp.score THEN 1 ELSE 0 END) as ties,
+        SUM(CASE WHEN t.score > opp.score THEN 1 ELSE 0 END) as wins,
+        SUM(CASE WHEN t.score < opp.score THEN 1 ELSE 0 END) as losses,
+        SUM(CASE WHEN t.score = opp.score THEN 1 ELSE 0 END) as ties,
         
         -- Home/Away splits
-        AVG(CASE WHEN home_away = 'home' THEN score END) as avg_points_home,
-        AVG(CASE WHEN home_away = 'away' THEN score END) as avg_points_away
+        AVG(CASE WHEN home_away = 'home' THEN t.score END) as avg_points_home,
+        AVG(CASE WHEN home_away = 'away' THEN t.score END) as avg_points_away
         
     FROM real_deal.fact_game_team t
     JOIN real_deal.fact_game_team opp 
