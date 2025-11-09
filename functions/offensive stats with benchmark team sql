@@ -1,0 +1,34 @@
+CREATE OR REPLACE VIEW ncaa.real_deal.vw_team_offense_with_benchmark AS
+
+-- Team-by-team AVG stats
+SELECT
+  CAST(team_id AS VARCHAR) AS team_name,
+  AVG(score) AS score,
+  AVG(total_yards) AS total_yards,
+  AVG(third_eff) AS third_eff,
+  AVG(fourth_eff) AS fourth_eff,
+  AVG(yards_per_pass) AS yards_per_pass,
+  AVG(yards_per_rush) AS yards_per_rush,
+  AVG(turnovers) AS turnovers,
+  AVG(fumbles_lost) AS fumbles_lost,
+  AVG(ints_thrown) AS ints_thrown,
+  AVG(top) AS top
+FROM ncaa.real_deal.fact_game_team
+GROUP BY team_id
+
+UNION ALL
+
+-- Benchmark team: medians across all teams
+SELECT
+  'Benchmark Team' AS team_name,
+  MEDIAN(score),
+  MEDIAN(total_yards),
+  MEDIAN(third_eff),
+  MEDIAN(fourth_eff),
+  MEDIAN(yards_per_pass),
+  MEDIAN(yards_per_rush),
+  MEDIAN(turnovers),
+  MEDIAN(fumbles_lost),
+  MEDIAN(ints_thrown),
+  MEDIAN(top)
+FROM ncaa.real_deal.fact_game_team;
