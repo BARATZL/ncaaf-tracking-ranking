@@ -2,7 +2,8 @@
 CREATE SCHEMA IF NOT EXISTS bt;
 
 -- 1. Team Stats
-team_id INTEGER PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS bt.team_stats
+(team_id INTEGER PRIMARY KEY,
     
     -- Game counts
     games_played INTEGER NOT NULL,
