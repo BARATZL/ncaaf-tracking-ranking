@@ -1,0 +1,25 @@
+CREATE TABLE ncaa.real_deal.team_records AS
+WITH game_results AS (
+  SELECT
+    f1.team_id,
+    t.name AS team_name,
+    f1.game_id,
+    f1.score AS team_score,
+    f2.score AS opponent_score
+  FROM ncaa.real_deal.fact_game_team AS f1
+  JOIN ncaa.real_deal.fact_game_team AS f2
+    ON f1.game_id = f2.game_id
+    AND f1.team_id <> f2.team_id
+  JOIN ncaa.real_deal.dim_teams AS t
+    ON f1.team_id = t.id
+)
+SELECT
+  team_id,
+  team_name,
+  COUNT(*) AS total_games,
+  SUM(CASE WHEN team_score > opponent_score THEN 1 ELSE 0 END) AS wins,
+  SUM(CASE WHEN team_score < opponent_score THEN 1 ELSE 0 END) AS losses,
+  ROUND(SUM(CASE WHEN team_score > opponent_score THEN 1 ELSE 0 END) * 1.0 / COUNT(*), 2) AS win_rate
+FROM game_results
+GROUP BY team_id, team_name;
+
