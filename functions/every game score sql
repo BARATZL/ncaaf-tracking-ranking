@@ -1,0 +1,8 @@
+CREATE OR REPLACE TABLE ncaa.real_deal.bt_game_scores AS
+SELECT
+  game_id,
+  team_id,
+  home_away,
+  score
+FROM ncaa.real_deal.fact_game_team
+ORDER BY game_id, home_away DESC;
