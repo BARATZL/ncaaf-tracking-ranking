@@ -26,7 +26,12 @@ def bt_setup_and_agg():
     def run_the_deal():
         s = utils.read_sql(SQL_DIR / "update_bt.sql")
         utils.run_execute(s)
+    
+    @task
+    def pairwise():
+        t = utils.read_sql(SQL_DIR / "pairwise_history.sql")
+        utils.run_execute(t)
 
-    setup_schema() >> run_the_deal()
+    setup_schema() >> run_the_deal() >> pairwise()
 
 bt_setup_and_agg()
