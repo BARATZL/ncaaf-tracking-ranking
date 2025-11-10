@@ -106,7 +106,7 @@ def task(request):
         SELECT
         gt.*,
         ROW_NUMBER() OVER (
-            PARTITION BY game_id
+            PARTITION BY game_id, team_id
             ORDER BY ingest_timestamp DESC NULLS LAST
         ) AS rn
         FROM ncaa.raw.game_team AS gt

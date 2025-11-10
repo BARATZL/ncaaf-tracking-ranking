@@ -5,24 +5,24 @@
 CREATE OR REPLACE TABLE bt.team_stats AS
 WITH team_offensive_stats AS (
     SELECT
-        team_id,
+        t.team_id,
         COUNT(*) as games_played,
         
         -- Offensive averages
-        AVG(score) as avg_points_scored,
-        AVG(total_yards) as avg_total_yards,
-        AVG(third_eff) as avg_third_eff,
-        AVG(fourth_eff) as avg_fourth_eff,
-        AVG(yards_per_pass) as avg_yards_per_pass,
-        AVG(yards_per_rush) as avg_yards_per_rush,
-        AVG(turnovers) as avg_turnovers,
-        AVG(fumbles_lost) as avg_fumbles_lost,
-        AVG(ints_thrown) as avg_ints_thrown,
-        AVG(top) as avg_top,
+        AVG(t.score) as avg_points_scored,
+        AVG(t.total_yards) as avg_total_yards,
+        AVG(t.third_eff) as avg_third_eff,
+        AVG(t.fourth_eff) as avg_fourth_eff,
+        AVG(t.yards_per_pass) as avg_yards_per_pass,
+        AVG(t.yards_per_rush) as avg_yards_per_rush,
+        AVG(t.turnovers) as avg_turnovers,
+        AVG(t.fumbles_lost) as avg_fumbles_lost,
+        AVG(t.ints_thrown) as avg_ints_thrown,
+        AVG(t.top) as avg_top,
         
         -- Totals
-        SUM(score) as total_points_scored,
-        SUM(total_yards) as total_yards_gained,
+        SUM(t.score) as total_points_scored,
+        SUM(t.total_yards) as total_yards_gained,
         
         -- Win-loss record
         SUM(CASE WHEN t.score > opp.score THEN 1 ELSE 0 END) as wins,
@@ -30,14 +30,14 @@ WITH team_offensive_stats AS (
         SUM(CASE WHEN t.score = opp.score THEN 1 ELSE 0 END) as ties,
         
         -- Home/Away splits
-        AVG(CASE WHEN home_away = 'home' THEN t.score END) as avg_points_home,
-        AVG(CASE WHEN home_away = 'away' THEN t.score END) as avg_points_away
+        AVG(CASE WHEN t.home_away = 'Home' THEN t.score END) as avg_points_home,
+        AVG(CASE WHEN t.home_away = 'Away' THEN t.score END) as avg_points_away
         
     FROM real_deal.fact_game_team t
     JOIN real_deal.fact_game_team opp 
         ON t.game_id = opp.game_id 
         AND t.team_id != opp.team_id
-    GROUP BY team_id
+    GROUP BY t.team_id
 ),
 team_defensive_stats AS (
     SELECT
