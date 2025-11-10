@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS bt.team_stats
 );
 
 -- 2. Pairwise Comparisons
-CREATE TABLE ncaa.bt.pairwise_comparisons (
+CREATE TABLE IF NOT EXISTS ncaa.bt.pairwise_comparisons (
     game_id INT PRIMARY KEY,
     home_team_id INT NOT NULL,
     away_team_id INT NOT NULL,
@@ -81,26 +81,22 @@ CREATE TABLE ncaa.bt.pairwise_comparisons (
 
 -- 3. Rankings
 CREATE TABLE IF NOT EXISTS bt.rankings (
-    team_id INTEGER NOT NULL,
-    model_run_timestamp TIMESTAMP NOT NULL,
-    rank INTEGER NOT NULL,
-    bt_strength FLOAT NOT NULL,
-    prob_beat_benchmark FLOAT NOT NULL CHECK (prob_beat_benchmark >= 0 AND prob_beat_benchmark <= 1),
-    wins INTEGER,
-    losses INTEGER,
-    model_version VARCHAR(50),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY(team_id, model_run_timestamp)
+    team_id INT NOT NULL,
+    rank INT,
+    strength FLOAT NOT NULL,
+    prob_vs_avg FLOAT NOT NULL,  -- Probability of beating average team
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(team_id, updated_at)
 );
 
 -- 4. Model Runs
-CREATE TABLE IF NOT EXISTS bt.model_runs (
-    run_timestamp TIMESTAMP NOT NULL PRIMARY KEY,
-    model_version VARCHAR(50) NOT NULL,
-    num_teams INTEGER NOT NULL,
-    num_games INTEGER NOT NULL,
-    convergence_status VARCHAR(50),
-    execution_status VARCHAR(50) DEFAULT 'running'
+CREATE TABLE IF NOT EXISTS bt.model_ranking_history (
+    team_id INT NOT NULL,
+    rank INT,
+    strength FLOAT NOT NULL,
+    prob_vs_avg FLOAT NOT NULL,  -- Probability of beating average team
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY(team_id, updated_at)
 );
 
 -- 5. benchmarked team
@@ -157,6 +153,6 @@ CREATE INDEX IF NOT EXISTS idx_benchmark_timestamp
 CREATE INDEX IF NOT EXISTS idx_benchmark_season 
     ON bt.benchmark_stats(season_year, week_number);
 
-CREATE INDEX IF NOT EXISTS idx_rankings_timestamp ON bt.rankings(model_run_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_rankings_timestamp ON bt.rankings(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_rankings_rank ON bt.rankings(rank);
 CREATE INDEX IF NOT EXISTS idx_pairwise_teams ON bt.pairwise_comparisons(home_team_id, away_team_id);

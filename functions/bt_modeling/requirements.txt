@@ -1,0 +1,7 @@
+functions-framework==3.*
+duckdb==1.1.*
+pandas==2.*
+numpy==1.*
+choix==0.3.*
+google-cloud-secret-manager
+networkx==3.*
