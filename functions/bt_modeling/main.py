@@ -63,9 +63,9 @@ def bradley_terry_rankings(request):
             away_idx = team_to_idx[row['away_team_id']]
             
             if row['home_won'] == 1:
-                comparisons.append((away_idx, home_idx))  # home beat away
+                comparisons.append((home_idx, away_idx))  # home beat away
             else:
-                comparisons.append((home_idx, away_idx))  # away beat home
+                comparisons.append((away_idx, home_idx))  # away beat home
         
         print(f"✓ Created {len(comparisons)} comparisons")
         print(f"First 5 comparisons: {comparisons[:5]}")

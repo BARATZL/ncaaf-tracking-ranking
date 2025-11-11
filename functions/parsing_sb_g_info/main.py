@@ -169,8 +169,8 @@ def task(request):
                 game_team_stats.append({
                     'event_id':game_id,
                     'team':data['boxscore']['teams'][0]['team']['id'],  # Can be adjusted if id is not sufficient for joins.
-                    'home_away':'Away',
-                    'score' : competitors[0]['score'],
+                    'home_away': data['boxscore']['teams'][0]['homeAway'],
+                    'score' : competitors[1]['score'], # from different json, so order is not typical away @ home format.
                         #now for stats
                     'total_yards':safe_cast(data['boxscore']['teams'][0]['statistics'][3]['displayValue'], int),
                     'third_eff':safe_cast(data['boxscore']['teams'][0]['statistics'][1]['value'], float),
@@ -189,8 +189,8 @@ def task(request):
                 game_team_stats.append({
                         'event_id':game_id,
                         'team':data['boxscore']['teams'][1]['team']['id'],  # Can be adjusted if id is not sufficient for joins.
-                        'home_away':'Home',   # hard coding the second team to be home team, following T1 @ T2 format of most sports promotions.
-                        'score': competitors[1]['score'],
+                        'home_away':data['boxscore']['teams'][1]['homeAway'],
+                        'score': competitors[0]['score'],
                         'total_yards':safe_cast(data['boxscore']['teams'][1]['statistics'][3]['displayValue'], int),
                         'third_eff':safe_cast(data['boxscore']['teams'][1]['statistics'][1]['value'], float),
                         'fourth_eff':safe_cast(data['boxscore']['teams'][1]['statistics'][2]['value'], float),

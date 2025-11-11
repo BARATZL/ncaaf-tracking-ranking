@@ -30,8 +30,8 @@ WITH team_offensive_stats AS (
         SUM(CASE WHEN t.score = opp.score THEN 1 ELSE 0 END) as ties,
         
         -- Home/Away splits
-        AVG(CASE WHEN t.home_away = 'Home' THEN t.score END) as avg_points_home,
-        AVG(CASE WHEN t.home_away = 'Away' THEN t.score END) as avg_points_away
+        AVG(CASE WHEN t.home_away = 'home' THEN t.score END) as avg_points_home,
+        AVG(CASE WHEN t.home_away = 'away' THEN t.score END) as avg_points_away
         
     FROM real_deal.fact_game_team t
     JOIN real_deal.fact_game_team opp 

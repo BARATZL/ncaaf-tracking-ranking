@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS bt.team_stats
 );
 
 -- 2. Pairwise Comparisons
-CREATE TABLE IF NOT EXISTS ncaa.bt.pairwise_comparisons (
+CREATE TABLE IF NOT EXISTS bt.pairwise_comparisons (
     game_id INT PRIMARY KEY,
     home_team_id INT NOT NULL,
     away_team_id INT NOT NULL,

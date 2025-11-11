@@ -22,5 +22,5 @@ SELECT
 FROM ncaa.real_deal.fact_game_team h
 JOIN ncaa.real_deal.fact_game_team a 
     ON h.game_id = a.game_id
-WHERE h.home_away = 'Home'
-  AND a.home_away = 'Away'
+WHERE h.home_away = 'home'
+  AND a.home_away = 'away'
