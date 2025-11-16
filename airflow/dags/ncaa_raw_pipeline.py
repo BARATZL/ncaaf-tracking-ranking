@@ -54,7 +54,7 @@ START = pendulum.datetime(2025, 8, 21, 0, 0, tz=LOCAL_TZ)  # Backfill since firs
 @dag(
     schedule="30 10 * * 6",   # 10:30
     start_date=START,
-    catchup=True,             # start backfill
+    catchup=False,             
     max_active_runs=1,
     tags=["ncaa", "raw", "ingest", "sat-1030am"],
 )
@@ -65,7 +65,7 @@ def ncaa_raw_pipeline_sat_1030am():
 @dag(
     schedule="0 18 * * 0",    # 18:00
     start_date=START,
-    catchup=True,             # start backfill
+    catchup=False,       
     max_active_runs=1,
     tags=["ncaa", "raw", "ingest", "sun-6pm"],
 )
