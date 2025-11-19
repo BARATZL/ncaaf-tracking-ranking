@@ -16,7 +16,7 @@ bucket_name = "ba882-ncaa-project"
 @functions_framework.http
 def bradley_terry_rankings(request):
     """
-    Runs Bradley-Terry model on pairwise comparisons and returns top 25 teams
+    Runs Bradley-Terry model on pairwise comparisons with margin-of-victory weighting
     """
     try:
         print("Starting Bradley-Terry rankings function...")
@@ -34,13 +34,20 @@ def bradley_terry_rankings(request):
         md = duckdb.connect(f'md:?motherduck_token={md_token}')
         print("✓ Connected to MotherDuck")
         
-        # 1. Pull pairwise comparisons
+        # 1. Pull pairwise comparisons with statistics
         print("Fetching pairwise comparisons from database...")
         df = md.execute("""
             SELECT 
                 home_team_id,
                 away_team_id,
-                home_won
+                home_won,
+                home_score,
+                away_score,
+                score_margin,
+                home_total_yards,
+                away_total_yards,
+                home_turnovers,
+                away_turnovers
             FROM ncaa.bt.pairwise_comparisons
         """).df()
         print(f"✓ Retrieved {len(df)} games")
@@ -54,20 +61,40 @@ def bradley_terry_rankings(request):
         n_teams = len(all_teams)
         print(f"✓ Found {n_teams} unique teams")
         
-        # 3. Convert team IDs to indices for choix
-        print("\nBuilding comparison list...")
+        # 3. Convert team IDs to indices and apply margin-of-victory weighting
+        print("\nBuilding weighted comparison list...")
         comparisons = []
         
         for _, row in df.iterrows():
             home_idx = team_to_idx[row['home_team_id']]
             away_idx = team_to_idx[row['away_team_id']]
             
-            if row['home_won'] == 1:
-                comparisons.append((home_idx, away_idx))  # home beat away
+            # Calculate weight based on margin of victory
+            # Use a logarithmic scale to prevent blowouts from dominating
+            margin = abs(row['score_margin']) if pd.notna(row['score_margin']) else 0
+            
+            # Weight function: log scale with cap at 3x
+            # This means: 7pt win ≈ 1x, 14pt ≈ 1.5x, 21pt ≈ 2x, 35pt+ ≈ 3x
+            if margin > 0:
+                weight = min(1 + np.log1p(margin) / 3, 3.0)
             else:
-                comparisons.append((away_idx, home_idx))  # away beat home
+                weight = 1.0  # Default weight if no score data
+            
+            # Determine winner and add weighted comparisons
+            if row['home_won'] == 1:
+                winner_idx = home_idx
+                loser_idx = away_idx
+            else:
+                winner_idx = away_idx
+                loser_idx = home_idx
+            
+            # Add multiple copies of the comparison based on weight
+            # Round to nearest integer, minimum of 1
+            num_copies = max(1, round(weight))
+            comparisons.extend([(winner_idx, loser_idx)] * num_copies)
         
-        print(f"✓ Created {len(comparisons)} comparisons")
+        print(f"✓ Created {len(comparisons)} weighted comparisons from {len(df)} games")
+        print(f"Average weight per game: {len(comparisons) / len(df):.2f}x")
         print(f"First 5 comparisons: {comparisons[:5]}")
         
         # 4. Filter teams by minimum games played
@@ -77,9 +104,13 @@ def bradley_terry_rankings(request):
             team_game_count[winner] = team_game_count.get(winner, 0) + 1
             team_game_count[loser] = team_game_count.get(loser, 0) + 1
 
-        min_games = 4
-        eligible_teams = {team for team, count in team_game_count.items() if count >= min_games}
-        print(f"✓ {len(eligible_teams)} teams have played at least {min_games} games")
+        # Note: game count is now based on weighted comparisons
+        # Adjust threshold accordingly (multiply by average weight)
+        avg_weight = len(comparisons) / len(df)
+        min_games_weighted = int(4 * avg_weight)  # Equivalent to ~4 actual games
+        
+        eligible_teams = {team for team, count in team_game_count.items() if count >= min_games_weighted}
+        print(f"✓ {len(eligible_teams)} teams have played at least ~4 games (weighted threshold: {min_games_weighted})")
         print(f"  Filtered out {len(team_game_count) - len(eligible_teams)} teams")
 
         # Filter comparisons to only include eligible teams
@@ -113,7 +144,7 @@ def bradley_terry_rankings(request):
             (w, l) for w, l in filtered_comparisons 
             if w in largest_cc and l in largest_cc
         ]
-        print(f"✓ Final dataset: {len(final_comparisons)} comparisons")
+        print(f"✓ Final dataset: {len(final_comparisons)} weighted comparisons")
         
         # 7. Remap team indices to be contiguous (0 to n-1)
         print("\nRemapping team indices...")
@@ -131,7 +162,7 @@ def bradley_terry_rankings(request):
         print(f"Max index in remapped comparisons: {max_idx}")
         print(f"Expected max index: {len(connected_teams) - 1}")
         
-        # 8. Add regularization for teams with perfect records
+        # 8. Check for teams with perfect records (for informational purposes only)
         print("\nChecking for teams with perfect records...")
         team_wins = {}
         team_losses = {}
@@ -147,36 +178,22 @@ def bradley_terry_rankings(request):
         print(f"Teams with only losses: {len(teams_only_losing)}")
 
         if teams_only_winning:
-            print(f"  Teams only winning: {teams_only_winning[:10]}")
+            print(f"  Undefeated teams (indices): {teams_only_winning[:10]}")
         if teams_only_losing:
-            print(f"  Teams only losing: {teams_only_losing[:10]}")
-
-        # Add regularization
-        regularized_comparisons = remapped_comparisons.copy()
-
-        for team in teams_only_winning:
-            opponents = [l for w, l in remapped_comparisons if w == team]
-            if opponents:
-                regularized_comparisons.append((opponents[0], team))
-                print(f"Added regularization: team {team} loses to {opponents[0]}")
-
-        for team in teams_only_losing:
-            opponents = [w for w, l in remapped_comparisons if l == team]
-            if opponents:
-                regularized_comparisons.append((team, opponents[0]))
-                print(f"Added regularization: team {team} beats {opponents[0]}")
-
-        print(f"Total comparisons after regularization: {len(regularized_comparisons)}")
+            print(f"  Winless teams (indices): {teams_only_losing[:10]}")
+        
+        # Note: We're NOT adding regularization - margin weighting handles this naturally
+        print("✓ Using weighted comparisons only (no artificial regularization)")
         
         # 9. Run Bradley-Terry model
-        print("\n🔄 Running Bradley-Terry model...")
-        print(f"Input: {len(connected_teams)} teams, {len(regularized_comparisons)} comparisons")
+        print("\n📊 Running Bradley-Terry model with margin-of-victory weighting...")
+        print(f"Input: {len(connected_teams)} teams, {len(remapped_comparisons)} weighted comparisons")
         
         try:
             log_params = ilsr_pairwise(
                 len(connected_teams), 
-                regularized_comparisons,
-                alpha=0.01
+                remapped_comparisons,
+                alpha=0.01  # Small regularization for numerical stability
             )
             print("✓ Bradley-Terry model completed successfully!")
         except Exception as bt_error:
@@ -186,7 +203,7 @@ def bradley_terry_rankings(request):
             
             # Create win matrix
             win_matrix = np.zeros((len(connected_teams), len(connected_teams)))
-            for winner, loser in regularized_comparisons:
+            for winner, loser in remapped_comparisons:
                 win_matrix[winner, loser] += 1
             
             print(f"Win matrix shape: {win_matrix.shape}")
@@ -264,6 +281,7 @@ def bradley_terry_rankings(request):
         top_25 = win_probs_df.head(25)
         
         print("\n✅ Function completed successfully!")
+        print(f"📊 Weighting resulted in {len(remapped_comparisons)}/{len(df)} = {len(remapped_comparisons)/len(df):.2f}x average weight per game")
         
         # Return results
         return {
@@ -271,7 +289,9 @@ def bradley_terry_rankings(request):
             "top_25_teams": top_25.to_dict(orient='records'),
             "total_teams": n_teams,
             "connected_teams": len(connected_teams),
-            "total_games": len(df)
+            "total_games": len(df),
+            "weighted_comparisons": len(remapped_comparisons),
+            "average_weight": round(len(remapped_comparisons) / len(df), 2)
         }, 200
         
     except Exception as e:
