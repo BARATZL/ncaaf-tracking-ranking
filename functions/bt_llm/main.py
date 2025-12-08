@@ -32,141 +32,105 @@ def get_md_connection():
     return duckdb.connect(f"md:?motherduck_token={MD_TOKEN}")
 
 # ==========================
-# Fetch rankings + 3 recent games per team
+# Data access helpers
 # ==========================
 
-def get_recent_games_with_rankings(con) -> pd.DataFrame:
+def get_top25_rankings(con) -> pd.DataFrame:
     query = """
-        WITH exploded_games AS (
-            SELECT
-                game_id,
-                home_team_id AS team_id,
-                away_team_id AS opponent_id,
-                home_score AS team_score,
-                away_score AS opponent_score,
-                CASE
-                    WHEN home_score > away_score THEN 'W'
-                    WHEN home_score < away_score THEN 'L'
-                    ELSE 'T'
-                END AS result
-            FROM ncaa.bt.pairwise_comparisons
-
-            UNION ALL
-
-            SELECT
-                game_id,
-                away_team_id AS team_id,
-                home_team_id AS opponent_id,
-                away_score AS team_score,
-                home_score AS opponent_score,
-                CASE
-                    WHEN away_score > home_score THEN 'W'
-                    WHEN away_score < home_score THEN 'L'
-                    ELSE 'T'
-                END AS result
-            FROM ncaa.bt.pairwise_comparisons
-        ),
-        ranked AS (
-            SELECT
-                r.rank,
-                r.team_id,
-                t.display_name AS team_name
-            FROM ncaa.bt.rankings r
-            JOIN ncaa.real_deal.dim_teams t ON r.team_id = t.id
-        ),
-        with_recent AS (
-            SELECT
-                r.rank,
-                r.team_id,
-                r.team_name,
-                e.game_id,
-                e.opponent_id,
-                e.team_score,
-                e.opponent_score,
-                e.result,
-                ROW_NUMBER() OVER (PARTITION BY e.team_id ORDER BY e.game_id DESC) AS rn
-            FROM exploded_games e
-            JOIN ranked r ON e.team_id = r.team_id
-        )
-        SELECT *
-        FROM with_recent
-        WHERE rn <= 3
-        ORDER BY team_id, game_id DESC;
+        SELECT
+            r.rank,
+            r.team_id,
+            t.display_name AS team_name
+        FROM ncaa.bt.rankings AS r
+        LEFT JOIN ncaa.real_deal.dim_teams AS t
+          ON r.team_id = t.id
+        ORDER BY r.rank ASC
+        LIMIT 25
     """
     return con.execute(query).df()
 
-# ==========================
-# Gemini per-team prompt
-# ==========================
+def get_recent_game_results(con, team_id: int) -> pd.DataFrame:
+    query = f"""
+        SELECT
+            CASE WHEN home_won = 1 THEN home_team_id ELSE away_team_id END AS winner_team_id,
+            CASE WHEN home_won = 1 THEN away_team_id ELSE home_team_id END AS loser_team_id,
+            home_team_id,
+            away_team_id,
+            home_score,
+            away_score
+        FROM ncaa.bt.pairwise_comparisons
+        WHERE home_team_id = {team_id} OR away_team_id = {team_id}
+        ORDER BY RANDOM()
+        LIMIT 3
+    """
+    return con.execute(query).df()
 
-def summarize_team(team_name: str, rank: int, recent_games: pd.DataFrame) -> str:
-    game_rows = []
-    for _, row in recent_games.iterrows():
-        game_rows.append(
-            f"- Game {row['game_id']}: Team {row['team_id']} {row['team_score']} vs Team {row['opponent_id']} {row['opponent_score']} ({row['result']})"
-        )
-    games_md = "\n".join(game_rows)
+def build_game_markdown(df: pd.DataFrame, team_id: int) -> str:
+    rows = []
+    for _, row in df.iterrows():
+        if row["home_team_id"] == team_id:
+            opponent = row["away_team_id"]
+            result = "W" if row["home_score"] > row["away_score"] else "L"
+            score_str = f"{row['home_score']}–{row['away_score']}"
+        else:
+            opponent = row["home_team_id"]
+            result = "W" if row["away_score"] > row["home_score"] else "L"
+            score_str = f"{row['away_score']}–{row['home_score']}"
+        rows.append(f"- vs Team {opponent}: {result} ({score_str})")
+    return "\n".join(rows)
 
+def summarize_team(rank: int, team_name: str, team_id: int, recent_games_md: str) -> str:
     prompt = f"""
-You are a college football analyst.
+You are a sportswriter summarizing the recent performance of a college football team.
 
-Write a short summary for the team **{team_name}**, which is currently ranked #{rank}.
-Use only the last 3 games shown below.
+Team: {team_name} (Rank #{rank})
 
-Avoid technical terms like win probability or strength coefficients.
-Focus instead on clear, human-understandable insights like wins, losses, scoring trends, and margins.
+Below are the results of the team's past three games:
+{recent_games_md}
 
-### Last 3 Games:
-{games_md}
+Write a short 2–4 sentence summary of the team’s recent performance based on these results and their top 25 ranking.
+Use plain language. Do not mention win probabilities or strength coefficients.
 
-Write 2–4 concise sentences.
+Be clear about how the team's rank is reflected in their wins or losses. Do not make up any information.
 """
-    response = client.models.generate_content(
+    resp = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
     )
-    return response.text.strip()
+    return resp.text.strip()
 
 # ==========================
-# Generate all summaries + write to MotherDuck
-# ==========================
-
-def generate_all_team_summaries(con):
-    df = get_recent_games_with_rankings(con)
-    summaries = []
-
-    for team_id in df['team_id'].unique():
-        team_df = df[df['team_id'] == team_id]
-        if team_df.empty:
-            continue
-
-        team_name = team_df.iloc[0]["team_name"]
-        rank = team_df.iloc[0]["rank"]
-        summary = summarize_team(team_name, rank, team_df)
-
-        summaries.append({
-            "team_id": int(team_id),
-            "rank": int(rank),
-            "summary": summary
-        })
-
-    result_df = pd.DataFrame(summaries)
-    con.execute("CREATE OR REPLACE TABLE ncaa.bt.team_summaries AS SELECT * FROM result_df")
-    print("✅ Wrote summaries to ncaa.bt.team_summaries")
-
-# ==========================
-# Cloud Function Entrypoint
+# HTTP Function Entry Point
 # ==========================
 
 @functions_framework.http
 def bt_llm_summary(request):
     try:
         con = get_md_connection()
-        generate_all_team_summaries(con)
+
+        top25_df = get_top25_rankings(con)
+        summaries = []
+
+        for _, row in top25_df.iterrows():
+            team_id = row["team_id"]
+            rank = row["rank"]
+            team_name = row["team_name"]
+            recent_games = get_recent_game_results(con, team_id)
+            if recent_games.empty:
+                continue
+            recent_md = build_game_markdown(recent_games, team_id)
+            summary_text = summarize_team(rank, team_name, team_id, recent_md)
+            summaries.append((team_id, rank, summary_text))
+
+        result_df = pd.DataFrame(summaries, columns=["team_id", "rank", "summary"])
+        con.execute("CREATE TABLE IF NOT EXISTS ncaa.bt.team_summaries (team_id INT, rank INT, summary STRING)")
+        con.execute("DELETE FROM ncaa.bt.team_summaries")
+        con.execute("INSERT INTO ncaa.bt.team_summaries SELECT * FROM result_df")
+
         return json.dumps({
             "status": "success",
-            "message": "Team summaries generated and saved.",
-            "timestamp": datetime.utcnow().isoformat(),
+            "message": "LLM summaries generated and written to ncaa.bt.team_summaries",
+            "timestamp": datetime.utcnow().isoformat()
         }), 200, {"Content-Type": "application/json"}
 
     except Exception as e:
