@@ -3,6 +3,7 @@ from airflow.decorators import dag, task
 import requests
 
 CF_URL = "https://us-central1-baratz00-ba882-fall25.cloudfunctions.net/bradley-terry-rankings"
+CF_LLM_URL = "https://bt-llm-summary-756433949230.us-central1.run.app"
 
 @dag(
     dag_id="bt_rankings_weekly",
@@ -21,6 +22,12 @@ def bt_rankings_weekly():
         print(data)
         return data
 
-    call_bt_function()
+    @task
+    def call_bt_llm()
+        resp = requests.get(CF_LLM_URL, timeout=180)
+        print(resp.raise_for_status())        # know the status
+        return {}
 
+    call_bt_function() >> call_bt_llm()
+    
 bt_rankings_weekly()
