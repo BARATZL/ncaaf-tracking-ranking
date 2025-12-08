@@ -23,11 +23,13 @@ def bt_rankings_weekly():
         return data
 
     @task
-    def call_bt_llm()
+    def call_bt_llm():
         resp = requests.get(CF_LLM_URL, timeout=180)
-        print(resp.raise_for_status())        # know the status
+        resp.raise_for_status()        # know the status
         return {}
 
-    call_bt_function() >> call_bt_llm()
-    
+    bt_task = call_bt_function()
+    llm_task = call_bt_llm()
+    bt_task >> llm_task
+        
 bt_rankings_weekly()
