@@ -1,0 +1,5 @@
+google-genai
+functions-framework
+duckdb
+pandas
+tabulate
