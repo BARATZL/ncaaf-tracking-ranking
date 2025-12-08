@@ -33,7 +33,6 @@ def get_md_connection():
     """
     if not MD_TOKEN:
         raise RuntimeError("MOTHERDUCK_TOKEN is not set")
-    # Align with existing Bradley-Terry function: use motherduck_token param
     return duckdb.connect(f"md:?motherduck_token={MD_TOKEN}")
 
 
@@ -41,145 +40,153 @@ def get_md_connection():
 # Data access helpers
 # ==========================
 
-def get_bt_rankings(con) -> pd.DataFrame:
+def get_top25_rankings(con) -> pd.DataFrame:
     """
-    Fetch the current Bradley-Terry snapshot from ncaa.bt.rankings,
-    joined to the team dimension (for names) and a season stats table
-    (for record and efficiency context).
+    Get the current Bradley-Terry rankings (top 25) with team names.
     """
     query = """
-        WITH stats AS (
-            SELECT
-                team_id,
-                games_played,
-                wins,
-                losses,
-                win_pct,
-                avg_points_scored,
-                avg_points_allowed,
-                point_differential,
-                turnover_margin
-            FROM ncaa.bt.team_stats
-        )
         SELECT
-          r.rank,
-          t.display_name AS team_name,
-          r.strength,
-          r.prob_vs_avg,
-          s.games_played,
-          s.wins,
-          s.losses,
-          s.win_pct,
-          s.avg_points_scored,
-          s.avg_points_allowed,
-          s.point_differential,
-          s.turnover_margin
+            r.rank,
+            r.team_id,
+            t.display_name AS team_name
         FROM ncaa.bt.rankings AS r
         LEFT JOIN ncaa.real_deal.dim_teams AS t
           ON r.team_id = t.id
-        LEFT JOIN stats AS s
-          ON r.team_id = s.team_id
+        WHERE r.rank <= 25
         ORDER BY r.rank ASC
-        LIMIT 25
     """
     return con.execute(query).df()
 
 
-
-def build_ranking_markdown(df: pd.DataFrame) -> str:
+def get_recent_game_results(con, team_id: int) -> pd.DataFrame:
     """
-    Convert the top-25 rankings plus key season stats into
-    a compact Markdown table for the LLM.
+    Pull a random sample of up to 3 recent games involving this team
+    from the pairwise_comparisons table, with opponent names.
+    NOTE: we avoid using alias name 'at' because it causes a parser issue.
     """
-    cols = [
-        "rank",
-        "team_name",
-        "strength",
-        "prob_vs_avg",
-        "games_played",
-        "wins",
-        "losses",
-        "win_pct",
-        "avg_points_scored",
-        "avg_points_allowed",
-        "point_differential",
-        "turnover_margin",
-    ]
-    small = df[cols]
-    return small.to_markdown(index=False)
-
-
-
-# ==========================
-# LLM helper
-# ==========================
-
-def generate_bt_summary_text(table_md: str) -> str:
+    query = f"""
+        SELECT
+            pc.home_team_id,
+            pc.away_team_id,
+            pc.home_score,
+            pc.away_score,
+            pc.home_won,
+            ht.display_name   AS home_team_name,
+            awt.display_name  AS away_team_name
+        FROM ncaa.bt.pairwise_comparisons AS pc
+        LEFT JOIN ncaa.real_deal.dim_teams AS ht
+          ON pc.home_team_id = ht.id
+        LEFT JOIN ncaa.real_deal.dim_teams AS awt
+          ON pc.away_team_id = awt.id
+        WHERE pc.home_team_id = {team_id} OR pc.away_team_id = {team_id}
+        ORDER BY RANDOM()
+        LIMIT 3
     """
-    Call Gemini to generate a short justification of the Bradley-Terry rankings
-    using both model output and season statistics.
+    return con.execute(query).df()
+
+
+def build_game_markdown(df: pd.DataFrame, team_id: int) -> str:
+    """
+    Turn recent game rows into a simple bullet list for the LLM.
+    """
+    rows = []
+    for _, row in df.iterrows():
+        if row["home_team_id"] == team_id:
+            opponent_name = row["away_team_name"]
+            result = "W" if row["home_score"] > row["away_score"] else "L"
+            score_str = f"{row['home_score']}–{row['away_score']}"
+        else:
+            opponent_name = row["home_team_name"]
+            result = "W" if row["away_score"] > row["home_score"] else "L"
+            score_str = f"{row['away_score']}–{row['home_score']}"
+        rows.append(f"- vs {opponent_name}: {result} ({score_str})")
+    return "\n".join(rows)
+
+
+def summarize_team(rank: int, team_name: str, team_id: int, recent_games_md: str) -> str:
+    """
+    Call Gemini to summarize this team's recent performance and rank.
     """
     prompt = f"""
-You are a college football analytics reporter.
+You are a sportswriter summarizing the recent performance of a college football team.
 
-You are given a Bradley-Terry style ranking of FBS teams.
-Each row has the team's rank, name, model strength, probability versus an average team,
-and key season statistics (wins, win percentage, points scored / allowed, point differential, turnover margin).
+Team: {team_name} (Rank #{rank})
 
-Write a short justification of these rankings in 3–4 concise sentences.
+Below are the results of the team's past three games:
+{recent_games_md}
 
-Focus on:
-- what makes the top teams stand out based on strength, win_pct, and point_differential,
-- any clear tiers or gaps in the top 10–15 teams,
-- notable overperformers (strong BT rating + good stats) or underperformers (high or low ranking that does not fully match their stats).
+Write a short 2–4 sentence summary of the team’s recent performance based on these results and their top 25 ranking.
+Use plain language. Do not mention win probabilities or strength coefficients.
 
-Do NOT invent any stats that are not present in the table.
-Refer to teams by their names when possible.
-
-Here is the data (Markdown table):
-
-{table_md}
+Be clear about how the team's rank is reflected in their wins or losses. Do not make up any information.
 """
-
     resp = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=prompt,
     )
     return resp.text.strip()
 
+
 # ==========================
-# Cloud Function entrypoint
+# HTTP Function Entry Point
 # ==========================
 
 @functions_framework.http
 def bt_llm_summary(request):
     """
-    HTTP entrypoint for the LLM-powered Bradley-Terry summary.
+    HTTP entrypoint for generating per-team LLM summaries for the
+    top 25 Bradley-Terry ranked teams and writing them to
+    ncaa.bt.team_summaries in MotherDuck.
 
-    Behavior:
-      - Connects to MotherDuck using MOTHERDUCK_TOKEN.
-      - Reads the current Bradley-Terry rankings from ncaa.bt.rankings.
-      - Builds a compact table of the top 25 teams.
-      - Calls Gemini to generate a short natural-language justification.
-      - Returns the summary as JSON.
+    We always (re)create ncaa.bt.team_summaries with schema:
+      team_id INT,
+      rank   INT,
+      summary STRING
     """
     try:
         con = get_md_connection()
 
-        df = get_bt_rankings(con)
-        if df.empty:
+        top25_df = get_top25_rankings(con)
+        summaries = []
+
+        for _, row in top25_df.iterrows():
+            team_id = int(row["team_id"])
+            rank = int(row["rank"])
+            team_name = row["team_name"]
+
+            recent_games = get_recent_game_results(con, team_id)
+            if recent_games.empty:
+                continue
+
+            recent_md = build_game_markdown(recent_games, team_id)
+            summary_text = summarize_team(rank, team_name, team_id, recent_md)
+
+            # Store in logical order: team_id, rank, summary
+            summaries.append((team_id, rank, summary_text))
+
+        if not summaries:
             body = {
                 "status": "error",
-                "message": "No data found in ncaa.bt.rankings"
+                "message": "No summaries generated (no games found for top 25 teams).",
             }
             return json.dumps(body), 404, {"Content-Type": "application/json"}
 
-        table_md = build_ranking_markdown(df)
-        summary = generate_bt_summary_text(table_md)
+        # DataFrame columns must match desired table schema
+        result_df = pd.DataFrame(summaries, columns=["team_id", "rank", "summary"])
+
+        # Register the DataFrame as a DuckDB table and replace the target table
+        con.register("result_df", result_df)
+
+        # This both clears old summaries AND fixes any old wrong schema/order
+        con.execute("""
+            CREATE OR REPLACE TABLE ncaa.bt.team_summaries AS
+            SELECT team_id, rank, summary
+            FROM result_df
+        """)
 
         body = {
             "status": "success",
-            "summary": summary,
+            "message": "LLM summaries generated and written to ncaa.bt.team_summaries",
             "timestamp": datetime.utcnow().isoformat(),
         }
         return json.dumps(body), 200, {"Content-Type": "application/json"}
