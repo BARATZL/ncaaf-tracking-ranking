@@ -14,6 +14,13 @@ import requests
 
 from google.cloud import secretmanager
 
+GCP_PROJECT_ID = (
+    os.environ.get("GOOGLE_CLOUD_PROJECT")
+    or os.environ.get("GCP_PROJECT_ID")
+    or "756433949230" 
+)
+
+MOTHERDUCK_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InBwMDEyNkBidS5lZHUiLCJtZFJlZ2lvbiI6ImF3cy11cy1lYXN0LTEiLCJzZXNzaW9uIjoicHAwMTI2LmJ1LmVkdSIsInBhdCI6IklZd01ST2w2LWU5RFRITTBnMHRjdXk2MG9aNVJKOGhkREM2LUE1UEl3Sk0iLCJ1c2VySWQiOiI4OWFmZmFkYS0yMjMzLTQ1YTgtOWE5NS03NTdhMTJhZDNjNjciLCJpc3MiOiJtZF9wYXQiLCJyZWFkT25seSI6ZmFsc2UsInRva2VuVHlwZSI6InJlYWRfd3JpdGUiLCJpYXQiOjE3NjMzMjU3OTF9.WnPryE-58CngLwKWpu0zZisU2OZStz4BiTaSRYHXuSY" 
 os.environ["MOTHERDUCK_TOKEN"] = MOTHERDUCK_TOKEN
 
 def get_secret(project_id: str, secret_id: str, version_id: str = "latest") -> str:
@@ -114,13 +121,22 @@ def _extract_sql_from_gemini(data: dict) -> str | None:
 
 def generate_sql_from_text(question: str) -> str | None:
     """
-    Send the NL question to an LLM endpoint (Gemini-compatible) and return generated SQL.
-    Requires `LLM_ENDPOINT` and `LLM_API_KEY` in st.secrets.
+    Send a natural-language question to a Gemini-compatible LLM endpoint
+    and return generated DuckDB SQL.
+    The function retrieves `gemini_endpoint` and `gemini_apikey` from GCP Secret Manager.
     """
-    endpoint = st.secrets.get("LLM_ENDPOINT")
-    api_key = st.secrets.get("LLM_API_KEY")
+  
+    # Secret names must match what you created in Secret Manager
+    endpoint = get_secret(GCP_PROJECT_ID, "gemini_endpoint")
+    api_key = get_secret(GCP_PROJECT_ID, "gemini_apikey_johnny")
+
+    
+
     if not endpoint or not api_key:
-        st.warning("Missing LLM endpoint or API key in st.secrets.")
+        st.warning(
+            "Missing `gemini_endpoint` or `gemini_apikey` values in Secret Manager. "
+            "Please check that both secrets contain valid strings."
+        )
         return None
 
     schema_text = get_db_schema_text()
@@ -137,7 +153,7 @@ def generate_sql_from_text(question: str) -> str | None:
         "When filtering by season, use the actual column from the target table: fact_rankings uses season_year; bt.team_stats does NOT have a season column, so do not apply season filters to bt.team_stats unless you join to a table that has season_year. Do not invent column names.\n"
         "For poll_name, default to filtering within ('AFCA Coaches Poll','AP Poll','CFP Rankings'); only use other poll_name values if the user explicitly asks for bt rankings.\n"
         "If the user mentions BT/Bradley–Terry rankings, use bt.rankings; if they ask for BT ranking history, use bt.model_ranking_history. Apply rank filters/order accordingly.\n"
-        "When querying rankings (non-BT), filter to the latest ingest_timestamp (max) for the chosen poll, so each rank maps to a single team (e.g., top 25 rows for AP Poll). For BT tables, do not assume a season_year column—use what exists in bt.rankings / bt.model_ranking_history (e.g., updated_at) and compute week_number if needed using the 2025-08-23 start rule.\n"
+        "When querying rankings (non-BT) for a current snapshot, filter to the latest ingest_timestamp (max) for the chosen poll (e.g., top 25 rows for AP Poll). When the user asks for history/trend/weekly ranking history, do NOT collapse to the latest ingest; instead return all rows for the requested season/poll. For BT tables, do not assume a season_year column—use what exists in bt.rankings / bt.model_ranking_history (e.g., updated_at) and compute week_number if needed using the 2025-08-23 start rule.\n"
         "When using CTEs and UNION/UNION ALL, declare all CTEs at the top, then perform the UNION; do not place WITH clauses after a UNION.\n"
         "If comparing BT rankings vs another poll (e.g., CFP, AP, AFCA), produce a wide result with columns team_name, bt_rank, other_rank (one row per team). Use bt.rankings for BT ranks; for the other poll, take the latest ingest_timestamp from real_deal.fact_rankings with the requested poll_name. Do NOT output a long table with ranking_source.\n"
         "If the user asks for a ranking trend/history, return week-level rows (season_year, week_number, rank) ordered by week_number; only collapse to the latest ingest_timestamp when they want the current snapshot.\n"
