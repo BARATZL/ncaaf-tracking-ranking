@@ -1,0 +1,10 @@
+streamlit
+matplotlib
+google-cloud-secret-manager
+numpy
+pandas
+plotly
+scikit-learn
+statsmodels
+duckdb==1.3.2
+requests
