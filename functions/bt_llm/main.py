@@ -60,7 +60,7 @@ def get_top25_rankings(con) -> pd.DataFrame:
 
 def get_recent_game_results(con, team_id: int) -> pd.DataFrame:
     """
-    Pull a random sample of up to 3 recent games involving this team
+    Pull 3 recent games involving this team
     from the pairwise_comparisons table, with opponent names.
     NOTE: we avoid using alias name 'at' because it causes a parser issue.
     """
@@ -72,14 +72,17 @@ def get_recent_game_results(con, team_id: int) -> pd.DataFrame:
             pc.away_score,
             pc.home_won,
             ht.display_name   AS home_team_name,
-            awt.display_name  AS away_team_name
+            awt.display_name  AS away_team_name,
+            gs.start_date
         FROM ncaa.bt.pairwise_comparisons AS pc
         LEFT JOIN ncaa.real_deal.dim_teams AS ht
           ON pc.home_team_id = ht.id
         LEFT JOIN ncaa.real_deal.dim_teams AS awt
           ON pc.away_team_id = awt.id
+        LEFT JOIN ncaa.real_deal.dim_games AS gs
+          ON pc.game_id = gs.id
         WHERE pc.home_team_id = {team_id} OR pc.away_team_id = {team_id}
-        ORDER BY RANDOM()
+        ORDER BY gs.start_date DESC
         LIMIT 3
     """
     return con.execute(query).df()
